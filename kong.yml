@@ -1,0 +1,50 @@
+_format_version: "3.0"
+
+upstreams:
+  - name: stub-upstream
+    targets:
+      - target: virtual-stub-service-1:8080
+        weight: 100
+      - target: virtual-stub-service-2:8080
+        weight: 100
+
+services:
+  - name: stub
+    host: stub-upstream
+    port: 8080
+    protocol: http
+    connect_timeout: 500
+    read_timeout: 3000
+    retries: 0
+    #url: http://virtual-stub-service:8080  # Matches docker-compose service name
+    #tls_verify: false  # Disable SSL verification for self-signed certs
+    routes:
+      - name: virtual-stub-route
+        paths:
+          - /mock
+        strip_path: false
+        hosts:
+          - localhost
+        protocols:
+          - http
+        methods:
+          - GET
+
+      - name: virtual-stub-health-route
+        paths:
+          - /actuator/health  # Remove bookstore-service prefix for direct access
+        strip_path: false  # Ensures Kong correctly forwards requests
+        hosts:
+          - localhost
+        protocols:
+          - http
+        methods:
+          - GET
+
+    plugins:
+      - name: rate-limiting
+        config:
+          second: 2  # Max 2 requests per second
+          minute: 60 # Max 60 requests per minute
+          limit_by: ip
+          policy: local
